@@ -1,0 +1,5 @@
+services:
+  api:
+    volumes:
+      - ./src:/usr/src/app/src
+    entrypoint: ["bun", "--hot", "src/index.ts"]
