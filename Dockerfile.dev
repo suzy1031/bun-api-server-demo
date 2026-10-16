@@ -1,9 +1,16 @@
+# 開発用の単一ステージ。公式 Bun 1.x
 FROM oven/bun:1
+# 作業ディレクトリ（compose.dev の working_dir / Watch の target と揃える）
 WORKDIR /app
 
+# 依存定義だけ先にコピーして、install 層をキャッシュしやすくする
 COPY package.json bun.lock ./
+# 開発に必要な依存も含めて入れる
 RUN bun install
+# 起動時点のソースをイメージに入れておく（以降の変更は Compose Watch が sync）
 COPY src ./src
 
+# 開発サーバが使うポート（公開は compose の ports）
 EXPOSE 3000
+# ファイル変更でプロセスを再起動する開発サーバ
 CMD ["bun", "--watch", "src/index.ts"]

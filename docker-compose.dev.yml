@@ -1,15 +1,24 @@
-# 開発用: ホストで src の保存を検知し、コンテナへファイルだけ同期する
-# コンテナ再起動はしない（Colima では restart すると Watch が context canceled で死ぬ）
+# docker-compose.yml に重ねて開発用の差分だけ上書きする
 # 起動: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
+# Colima では action: restart すると Watch が context canceled で死ぬため sync のみ
 services:
   api:
+    # 本番 Dockerfile ではなく開発用イメージを使う
     build:
+      # ビルドコンテキスト（プロジェクトルート）
       context: .
+      # 使う Dockerfile
       dockerfile: Dockerfile.dev
+    # コンテナ内のカレントディレクトリ（Dockerfile.dev の WORKDIR と揃える）
     working_dir: /app
+    # イメージの CMD を上書きして bun --watch で起動する
     entrypoint: ["bun", "--watch", "src/index.ts"]
+    # Compose Watch（up --watch が必要）。ホストで検知してコンテナへコピーする
     develop:
       watch:
+        # ホスト側で監視するパス
         - path: ./src
+          # コピー先（コンテナ内）
           target: /app/src
+          # ファイルを同期するだけ。コンテナは再起動しない
           action: sync

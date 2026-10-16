@@ -1,7 +1,13 @@
+# 起動するサービスの一覧
 services:
+  # API サーバ 1 つ
   api:
+    # カレントディレクトリの Dockerfile（本番用マルチステージ）でイメージをビルド
     build: .
+    # ホスト:コンテナ のポート対応。ブラウザは localhost:3000
     ports:
       - "3000:3000"
+    # コンテナ内のプロセスに渡す環境変数
     environment:
+      # src/index.ts が読む待ち受けポート
       PORT: "3000"
