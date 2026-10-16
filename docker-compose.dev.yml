@@ -1,5 +1,15 @@
+# 開発用: ホストで src の保存を検知し、コンテナへファイルだけ同期する
+# コンテナ再起動はしない（Colima では restart すると Watch が context canceled で死ぬ）
+# 起動: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
 services:
   api:
-    volumes:
-      - ./src:/usr/src/app/src
-    entrypoint: ["bun", "--hot", "src/index.ts"]
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    entrypoint: ["bun", "--watch", "src/index.ts"]
+    develop:
+      watch:
+        - path: ./src
+          target: /app/src
+          action: sync

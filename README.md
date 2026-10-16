@@ -11,8 +11,9 @@ Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起�
 ├── src/
 │   └── index.ts       # API 本体
 ├── Dockerfile         # マルチステージ（本番用 node_modules）
+├── Dockerfile.dev     # 開発用（bun install + bun --watch）
 ├── docker-compose.yml
-├── docker-compose.dev.yml   # Docker 開発（src マウント + bun --hot）
+├── docker-compose.dev.yml   # Docker 開発（Compose Watch で src を sync）
 └── .dockerignore
 ```
 
@@ -57,8 +58,7 @@ docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun install
    - `POST /items` → JSON `{ "name": string }` で作成（201 + 生成 ID）
    - `GET /items/:id` → 1件（無ければ 404）
 3. `const port = Number(process.env.PORT ?? 3000)` でポートを決定
-4. `Bun.serve({ port, fetch: app.fetch })` で listen
-5. 起動時にポートを `console.log` で表示
+4. `export default { port, fetch: app.fetch }` で Bun にサーバを渡す（`bun --watch` が再起動できるようにする）
 
 ### 3. Dockerfile（マルチステージ）
 
@@ -148,6 +148,31 @@ docker compose up --build -d
 ```bash
 docker compose down
 ```
+### Docker（開発・ファイル保存で再起動）
+
+Mac / Colima では、バインドマウント越しの `bun --watch` も、Compose の `restart` も途中で切れます。開発時は次の分担です。
+
+- Compose `--watch` がホストの `src/` 保存を検知し、コンテナ内へ **sync だけ**する
+- コンテナ内の `bun --watch` が、同期されたファイルを見てプロセスを再起動する
+
+**`--watch` が必須です。**
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
+```
+
+または:
+
+```bash
+bun run dev:docker
+```
+
+ログに `Watch enabled` と `Syncing service "api"` が出れば監視中です。再起動するとメモリ上の `items` は消えます。
+
+注意:
+
+- **`docker-compose up` だけ**（`docker-compose.dev.yml` なし、`--watch` なし）では反映されません
+- 依存パッケージ（`package.json`）を変えたときは、イメージの再ビルドが必要です
 
 ## API
 

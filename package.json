@@ -3,8 +3,8 @@
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "bun --hot src/index.ts",
-    "dev:docker": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
+    "dev": "bun --watch src/index.ts",
+    "dev:docker": "COMPOSE_MENU=0 docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch",
     "start": "bun src/index.ts",
     "typecheck": "tsc --noEmit"
   },
