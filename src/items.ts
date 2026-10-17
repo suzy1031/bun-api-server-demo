@@ -1,6 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
+import { sql } from "./db";
 
 type Item = {
   id: string;
@@ -11,14 +12,22 @@ const createItemSchema = z.object({
   name: z.string("name is required").min(1, "name is required"),
 });
 
-const items = new Map<string, Item>();
-
 export const itemsRoute = new Hono();
 
-itemsRoute.get("/", (c) => c.json(Array.from(items.values())));
+itemsRoute.get("/", async (c) => {
+  const items = await sql<Item[]>`SELECT id, name FROM items`;
+  return c.json(items);
+});
 
-itemsRoute.get("/:id", (c) => {
-  const item = items.get(c.req.param("id"));
+itemsRoute.get("/:id", async (c) => {
+  const id = c.req.param("id");
+  if (!z.uuid().safeParse(id).success) {
+    return c.json({ error: "not found" }, 404);
+  }
+
+  const [item] = await sql<Item[]>`
+    SELECT id, name FROM items WHERE id = ${id}
+  `;
   if (!item) {
     return c.json({ error: "not found" }, 404);
   }
@@ -35,11 +44,14 @@ itemsRoute.post(
       );
     }
   }),
-  (c) => {
+  async (c) => {
     const { name } = c.req.valid("json");
     const id = crypto.randomUUID();
-    const item: Item = { id, name };
-    items.set(id, item);
+    const [item] = await sql<Item[]>`
+      INSERT INTO items (id, name)
+      VALUES (${id}, ${name})
+      RETURNING id, name
+    `;
     return c.json(item, 201);
   },
 );

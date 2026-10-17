@@ -1,6 +1,6 @@
 # bun-api-server-demo
 
-Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起動できます。データはメモリ内のみ（再起動で消えます）。
+Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起動できます。`items` は PostgreSQL に保存します。ローカル開発は同梱の Postgres、本番は起動時に渡す `DATABASE_URL` の別 DB です。
 
 ## 構成
 
@@ -9,7 +9,9 @@ Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起�
 ├── bun.lock
 ├── tsconfig.json
 ├── src/
-│   └── index.ts       # API 本体
+│   ├── index.ts       # API 本体
+│   ├── db.ts          # Bun SQL と items テーブル作成
+│   └── items.ts       # /items ルート
 ├── Dockerfile         # マルチステージ（本番用 node_modules）
 ├── Dockerfile.dev     # 開発用（bun install + bun --watch）
 ├── docker-compose.yml
@@ -74,7 +76,8 @@ docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun install
 - サービス名 `api`
 - ビルドコンテキストはプロジェクトルート
 - `3000:3000` で公開
-- 環境変数 `PORT=3000`
+- 環境変数 `PORT=3000` と、起動時に渡す `DATABASE_URL`
+- Postgres コンテナは開発用の `docker-compose.dev.yml` だけ
 
 ### 5. `.dockerignore`
 
@@ -86,18 +89,19 @@ docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun install
 
 ### 6. 動作確認
 
-ローカル（Bun あり）:
+ローカル（Bun あり）。先に開発用 Postgres を上げる:
 
 ```bash
 bun install
-bun run dev
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+DATABASE_URL=postgres://app:app@localhost:5432/app bun run dev
 curl http://localhost:3000/health
 ```
 
-Docker:
+Docker（本番相当。`DATABASE_URL` は別 DB）:
 
 ```bash
-docker compose up --build
+DATABASE_URL=postgres://user:pass@host:5432/dbname docker compose up --build
 # または（Compose V2 プラグインがない環境）
 docker-compose up --build
 ```
@@ -125,15 +129,21 @@ bun run typecheck
 
 ### ローカル開発
 
+Postgres は開発用 Compose だけが起動します。ホストの Bun から繋ぐときは db だけ上げます。
+
 ```bash
-bun install
-bun run dev
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+DATABASE_URL=postgres://app:app@localhost:5432/app bun run dev
 ```
+
+ユーザ / パスワード / DB 名はいずれも `app` です。
 
 ### Docker（本番相当・イメージに src を焼き込み）
 
+Postgres コンテナは起動しません。接続先の `DATABASE_URL` が必須です。
+
 ```bash
-docker compose up --build
+DATABASE_URL=postgres://user:pass@host:5432/dbname docker compose up --build
 # Compose プラグインがない環境: docker-compose up --build
 ```
 
@@ -167,7 +177,7 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watc
 bun run dev:docker
 ```
 
-ログに `Watch enabled` と `Syncing service "api"` が出れば監視中です。再起動するとメモリ上の `items` は消えます。
+ログに `Watch enabled` と `Syncing service "api"` が出れば監視中です。`items` は同梱 Postgres のボリュームに残るので、API コンテナを再起動しても消えません。
 
 注意:
 
@@ -206,3 +216,4 @@ curl http://localhost:3000/items/<id>
 | 変数 | 既定値 | 説明 |
 |------|--------|------|
 | `PORT` | `3000` | 待ち受けポート |
+| `DATABASE_URL` | なし（必須） | PostgreSQL の接続文字列。未設定だと起動時に失敗する。開発用 Compose は `postgres://app:app@db:5432/app` を渡す |

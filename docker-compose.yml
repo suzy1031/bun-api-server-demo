@@ -11,3 +11,5 @@ services:
     environment:
       # src/index.ts が読む待ち受けポート
       PORT: "3000"
+      # 本番は別 DB。起動時に外から渡す（このファイルでは Postgres を起動しない）
+      DATABASE_URL: "${DATABASE_URL}"

@@ -2,6 +2,24 @@
 # 起動: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
 # Colima では action: restart すると Watch が context canceled で死ぬため sync のみ
 services:
+  # ローカル専用の Postgres。本番 compose には含めない
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    ports:
+      # ホストの bun run dev から localhost:5432 で繋ぐ
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
   api:
     # 本番 Dockerfile ではなく開発用イメージを使う
     build:
@@ -13,6 +31,12 @@ services:
     working_dir: /app
     # イメージの CMD を上書きして bun --watch で起動する
     entrypoint: ["bun", "--watch", "src/index.ts"]
+    environment:
+      # ローカルの db コンテナ。ベース側の DATABASE_URL を上書きする
+      DATABASE_URL: "postgres://app:app@db:5432/app"
+    depends_on:
+      db:
+        condition: service_healthy
     # Compose Watch（up --watch が必要）。ホストで検知してコンテナへコピーする
     develop:
       watch:
@@ -22,3 +46,6 @@ services:
           target: /app/src
           # ファイルを同期するだけ。コンテナは再起動しない
           action: sync
+
+volumes:
+  pgdata:
