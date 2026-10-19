@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # 公式 Bun イメージ（メジャー 1.x）。以降のステージの共通土台
 FROM oven/bun:1 AS base
 # コンテナ内の作業ディレクトリ。以降の COPY / RUN の基準になる
@@ -11,7 +12,9 @@ RUN mkdir -p /temp/dev
 COPY package.json bun.lock prisma.config.ts /temp/dev/
 COPY prisma /temp/dev/prisma
 # lockfile どおりに全依存を入れる（typecheck 用など）
-RUN cd /temp/dev && bun install --frozen-lockfile
+# tarball は BuildKit キャッシュに残す。--prefer-offline でメタデータの再取得を避け、足りないパッケージだけ落とす
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    cd /temp/dev && bun install --frozen-lockfile --prefer-offline
 # クライアント生成は DB に接続しない。設定読み込み用のダミー URL だけ渡す
 RUN cd /temp/dev && DATABASE_URL=postgresql://build:build@localhost:5432/build bunx prisma generate
 
@@ -20,7 +23,8 @@ RUN mkdir -p /temp/prod
 COPY package.json bun.lock prisma.config.ts /temp/prod/
 COPY prisma /temp/prod/prisma
 # 本番に必要なパッケージだけ入れる（typescript などは除外）
-RUN cd /temp/prod && bun install --frozen-lockfile --production
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    cd /temp/prod && bun install --frozen-lockfile --production --prefer-offline
 RUN cd /temp/prod && DATABASE_URL=postgresql://build:build@localhost:5432/build bunx prisma generate
 
 # 実際に docker run される最終ステージ
