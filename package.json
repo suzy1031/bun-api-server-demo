@@ -7,7 +7,8 @@
     "dev:docker": "COMPOSE_MENU=0 docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch",
     "start": "bunx prisma migrate deploy && bun src/index.ts",
     "db:generate": "prisma generate",
-    "typecheck": "DATABASE_URL=${DATABASE_URL:-postgresql://build:build@localhost:5432/build} prisma generate && tsc --noEmit"
+    "typecheck": "DATABASE_URL=${DATABASE_URL:-postgresql://build:build@localhost:5432/build} prisma generate && tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.9.1",
@@ -21,6 +22,7 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/pg": "^8.23.1",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
   }
 }

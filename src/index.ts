@@ -1,10 +1,4 @@
-import { Hono } from "hono";
-import { itemsRoute } from "./items";
-
-const app = new Hono();
-
-app.get("/health", (c) => c.json({ status: "ok!" }));
-app.route("/items", itemsRoute);
+import { app } from "./app";
 
 const port = Number(process.env.PORT ?? 3000);
 

@@ -8,12 +8,15 @@ Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起�
 ├── package.json
 ├── bun.lock
 ├── tsconfig.json
+├── vitest.config.ts   # Vitest（ユニットテスト）
 ├── prisma.config.ts   # CLI の DATABASE_URL
 ├── prisma/
 │   ├── schema.prisma  # items モデル
 │   └── migrations/    # Prisma Migrate
 ├── src/
-│   ├── index.ts       # API 本体
+│   ├── index.ts       # サーバ起動
+│   ├── app.ts         # Hono アプリ
+│   ├── app.test.ts    # /health と /items のユニットテスト
 │   ├── db.ts          # Prisma Client
 │   └── items.ts       # /items ルート
 ├── Dockerfile         # マルチステージ（本番用 node_modules）
@@ -47,6 +50,7 @@ bun add -d typescript @types/bun
 - `dev` — ホットリロード付き開発サーバ
 - `start` — 本番相当の起動
 - `typecheck` — TypeScript の型チェック
+- `test` — Vitest のユニットテスト（Prisma はモックし、DB は使わない）
 
 Bun が手元にない場合は、Docker で lockfile を生成できます:
 
@@ -117,10 +121,17 @@ curl -X POST http://localhost:3000/items \
 curl http://localhost:3000/items
 ```
 
-型チェック:
+型チェックとユニットテスト（Bun あり）:
 
 ```bash
 bun run typecheck
+bun run test
+```
+
+Bun が手元にない場合のユニットテスト。Postgres は不要です。
+
+```bash
+docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun run test
 ```
 
 ## 前提
