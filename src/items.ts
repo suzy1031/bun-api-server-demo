@@ -1,12 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
-import { sql } from "./db";
-
-type Item = {
-  id: string;
-  name: string;
-};
+import { prisma } from "./db";
 
 const createItemSchema = z.object({
   name: z.string("name is required").min(1, "name is required"),
@@ -15,7 +10,7 @@ const createItemSchema = z.object({
 export const itemsRoute = new Hono();
 
 itemsRoute.get("/", async (c) => {
-  const items = await sql<Item[]>`SELECT id, name FROM items`;
+  const items = await prisma.item.findMany();
   return c.json(items);
 });
 
@@ -25,9 +20,7 @@ itemsRoute.get("/:id", async (c) => {
     return c.json({ error: "not found" }, 404);
   }
 
-  const [item] = await sql<Item[]>`
-    SELECT id, name FROM items WHERE id = ${id}
-  `;
+  const item = await prisma.item.findUnique({ where: { id } });
   if (!item) {
     return c.json({ error: "not found" }, 404);
   }
@@ -47,11 +40,7 @@ itemsRoute.post(
   async (c) => {
     const { name } = c.req.valid("json");
     const id = crypto.randomUUID();
-    const [item] = await sql<Item[]>`
-      INSERT INTO items (id, name)
-      VALUES (${id}, ${name})
-      RETURNING id, name
-    `;
+    const item = await prisma.item.create({ data: { id, name } });
     return c.json(item, 201);
   },
 );

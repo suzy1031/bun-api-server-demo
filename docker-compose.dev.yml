@@ -29,8 +29,8 @@ services:
       dockerfile: Dockerfile.dev
     # コンテナ内のカレントディレクトリ（Dockerfile.dev の WORKDIR と揃える）
     working_dir: /app
-    # イメージの CMD を上書きして bun --watch で起動する
-    entrypoint: ["bun", "--watch", "src/index.ts"]
+    # 起動時に migrate deploy してから bun --watch する（package.json の dev）
+    entrypoint: ["bun", "run", "dev"]
     environment:
       # ローカルの db コンテナ。ベース側の DATABASE_URL を上書きする
       DATABASE_URL: "postgres://app:app@db:5432/app"

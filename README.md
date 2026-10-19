@@ -1,6 +1,6 @@
 # bun-api-server-demo
 
-Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起動できます。`items` は PostgreSQL に保存します。ローカル開発は同梱の Postgres、本番は起動時に渡す `DATABASE_URL` の別 DB です。
+Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起動できます。`items` は PostgreSQL に保存します。ORM は [Prisma](https://www.prisma.io/) です。ローカル開発は同梱の Postgres、本番は起動時に渡す `DATABASE_URL` の別 DB です。`dev` と `start` は起動前に `prisma migrate deploy` を実行します。
 
 ## 構成
 
@@ -8,12 +8,16 @@ Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起�
 ├── package.json
 ├── bun.lock
 ├── tsconfig.json
+├── prisma.config.ts   # CLI の DATABASE_URL
+├── prisma/
+│   ├── schema.prisma  # items モデル
+│   └── migrations/    # Prisma Migrate
 ├── src/
 │   ├── index.ts       # API 本体
-│   ├── db.ts          # Bun SQL と items テーブル作成
+│   ├── db.ts          # Prisma Client
 │   └── items.ts       # /items ルート
 ├── Dockerfile         # マルチステージ（本番用 node_modules）
-├── Dockerfile.dev     # 開発用（bun install + bun --watch）
+├── Dockerfile.dev     # 開発用（bun install + prisma generate）
 ├── docker-compose.yml
 ├── docker-compose.dev.yml   # Docker 開発（Compose Watch で src を sync）
 └── .dockerignore
@@ -23,6 +27,7 @@ Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起�
 |------|------|
 | ランタイム | Bun |
 | フレームワーク | Hono |
+| ORM | Prisma 7（`@prisma/adapter-pg`） |
 | ベースイメージ | `oven/bun:1` |
 
 ## 作業手順（プランに沿った構築手順）
@@ -93,7 +98,7 @@ docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun install
 
 ```bash
 bun install
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
 DATABASE_URL=postgres://app:app@localhost:5432/app bun run dev
 curl http://localhost:3000/health
 ```
@@ -101,9 +106,7 @@ curl http://localhost:3000/health
 Docker（本番相当。`DATABASE_URL` は別 DB）:
 
 ```bash
-DATABASE_URL=postgres://user:pass@host:5432/dbname docker compose up --build
-# または（Compose V2 プラグインがない環境）
-docker-compose up --build
+DATABASE_URL=postgres://user:pass@host:5432/dbname docker-compose up --build
 ```
 
 ```bash
@@ -132,7 +135,7 @@ bun run typecheck
 Postgres は開発用 Compose だけが起動します。ホストの Bun から繋ぐときは db だけ上げます。
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
 DATABASE_URL=postgres://app:app@localhost:5432/app bun run dev
 ```
 
@@ -143,20 +146,19 @@ DATABASE_URL=postgres://app:app@localhost:5432/app bun run dev
 Postgres コンテナは起動しません。接続先の `DATABASE_URL` が必須です。
 
 ```bash
-DATABASE_URL=postgres://user:pass@host:5432/dbname docker compose up --build
-# Compose プラグインがない環境: docker-compose up --build
+DATABASE_URL=postgres://user:pass@host:5432/dbname docker-compose up --build
 ```
 
 バックグラウンド:
 
 ```bash
-docker compose up --build -d
+docker-compose up --build -d
 ```
 
-停止:
+停止（この節の本番相当。`api` だけ）:
 
 ```bash
-docker compose down
+docker-compose down
 ```
 ### Docker（開発・ファイル保存で再起動）
 
@@ -177,7 +179,15 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watc
 bun run dev:docker
 ```
 
+停止（起動時と同じ 2 ファイルを指定する。`db` も止まる）:
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
+```
+
 ログに `Watch enabled` と `Syncing service "api"` が出れば監視中です。`items` は同梱 Postgres のボリュームに残るので、API コンテナを再起動しても消えません。
+
+以前の起動時 `CREATE TABLE` で作った volume があると、初回の `migrate deploy` はテーブル既存で失敗します。開発用データを捨ててよいときは `docker-compose -f docker-compose.yml -f docker-compose.dev.yml down -v` で volume を消してから起動し直します。スキーマが初期マイグレーションと一致している既存 DB は、`DATABASE_URL=... bunx prisma migrate resolve --applied 20261019000000_init` で適用済みとして記録できます。
 
 注意:
 
@@ -216,4 +226,4 @@ curl http://localhost:3000/items/<id>
 | 変数 | 既定値 | 説明 |
 |------|--------|------|
 | `PORT` | `3000` | 待ち受けポート |
-| `DATABASE_URL` | なし（必須） | PostgreSQL の接続文字列。未設定だと起動時に失敗する。開発用 Compose は `postgres://app:app@db:5432/app` を渡す |
+| `DATABASE_URL` | なし（必須） | PostgreSQL の接続文字列。未設定だと Prisma Client 初期化と `migrate deploy` が失敗する。開発用 Compose は `postgres://app:app@db:5432/app` を渡す。`prisma generate` は接続しないが、設定読み込みのために値が必要 |
