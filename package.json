@@ -9,6 +9,7 @@
     "docker:down": "COMPOSE_MENU=0 docker-compose down",
     "start": "bun src/index.ts",
     "typecheck": "tsc --noEmit",
+    "build": "bun build src/index.ts --outdir dist --target bun",
     "test": "vitest run"
   },
   "dependencies": {
