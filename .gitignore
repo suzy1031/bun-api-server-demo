@@ -1,4 +1,5 @@
 node_modules
+dist
 /generated
 core
 .env
