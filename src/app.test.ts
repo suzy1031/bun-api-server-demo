@@ -1,29 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { app } from "./app";
 
-const { findMany, findUnique, create } = vi.hoisted(() => ({
-  findMany: vi.fn(),
-  findUnique: vi.fn(),
-  create: vi.fn(),
+const { send } = vi.hoisted(() => ({
+  send: vi.fn(),
 }));
 
 vi.mock("./db", () => ({
-  prisma: {
-    item: {
-      findMany,
-      findUnique,
-      create,
-    },
-  },
+  doc: { send },
+  itemsTable: "items",
 }));
 
 const itemId = "11111111-1111-4111-8111-111111111111";
 
 describe("API", () => {
   beforeEach(() => {
-    findMany.mockReset();
-    findUnique.mockReset();
-    create.mockReset();
+    send.mockReset();
   });
 
   it("GET /health returns ok", async () => {
@@ -33,14 +24,15 @@ describe("API", () => {
     expect(await response.json()).toEqual({ status: "ok!" });
   });
 
-  it("GET /items returns items from prisma", async () => {
+  it("GET /items returns items from DynamoDB", async () => {
     const items = [{ id: itemId, name: "demo" }];
-    findMany.mockResolvedValue(items);
+    send.mockResolvedValue({ Items: items });
 
     const response = await app.request("/items");
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(items);
+    expect(send.mock.calls[0]?.[0].input).toEqual({ TableName: "items" });
   });
 
   it("GET /items/:id returns 404 for a non-uuid", async () => {
@@ -48,11 +40,11 @@ describe("API", () => {
 
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: "not found" });
-    expect(findUnique).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("GET /items/:id returns 404 when the item is missing", async () => {
-    findUnique.mockResolvedValue(null);
+    send.mockResolvedValue({});
 
     const response = await app.request(`/items/${itemId}`);
 
@@ -62,7 +54,7 @@ describe("API", () => {
 
   it("GET /items/:id returns the item", async () => {
     const item = { id: itemId, name: "demo" };
-    findUnique.mockResolvedValue(item);
+    send.mockResolvedValue({ Item: item });
 
     const response = await app.request(`/items/${itemId}`);
 
@@ -79,7 +71,7 @@ describe("API", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "name is required" });
-    expect(create).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("POST /items returns 400 when name is empty", async () => {
@@ -91,11 +83,11 @@ describe("API", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "name is required" });
-    expect(create).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("POST /items creates an item", async () => {
-    create.mockImplementation(async ({ data }: { data: { id: string; name: string } }) => data);
+    send.mockResolvedValue({});
 
     const response = await app.request("/items", {
       method: "POST",
@@ -109,8 +101,9 @@ describe("API", () => {
     expect(body.id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
     );
-    expect(create).toHaveBeenCalledWith({
-      data: { id: body.id, name: "demo" },
+    expect(send.mock.calls[0]?.[0].input).toEqual({
+      TableName: "items",
+      Item: { id: body.id, name: "demo" },
     });
   });
 });
