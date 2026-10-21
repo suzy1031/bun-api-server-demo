@@ -1,6 +1,6 @@
 # bun-api-server-demo
 
-Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起動できます。`items` は AWS DynamoDB に保存します。テーブル定義は [Terraform](infra/) です。
+Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起動できます。`items` は AWS DynamoDB に保存します。テーブルと Lambda は [Terraform](infra/) です。
 
 ## 構成
 
@@ -9,9 +9,10 @@ Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起�
 ├── bun.lock
 ├── tsconfig.json
 ├── vitest.config.ts   # Vitest（ユニットテスト）
-├── infra/             # DynamoDB テーブル（Terraform）
+├── infra/             # DynamoDB と Lambda（Terraform）
 ├── src/
 │   ├── index.ts       # サーバ起動
+│   ├── lambda.ts      # Lambda ハンドラ（Node.js）
 │   ├── app.ts         # Hono アプリ
 │   ├── app.test.ts    # /health と /items のユニットテスト
 │   ├── db.ts          # DynamoDB Document Client
@@ -228,3 +229,47 @@ curl http://localhost:3000/items/<id>
 | `AWS_REGION` | `ap-northeast-1` | DynamoDB のリージョン |
 | `ITEMS_TABLE` | `items` | DynamoDB のテーブル名 |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` | なし | 未設定のときは SDK が SSO や IAM ロールを探す。Docker から AWS へ接続するときは、起動するシェルで `aws configure export-credentials --format env` した値を渡す |
+
+## Lambda
+
+同じ Hono アプリを Node.js 22 の Lambda で動かします。ローカルの `bun run dev` はそのまま使えます。入口は Function URL で、IAM 署名がないリクエストは 403 になります。
+
+事前に `aws sso login` などで、この Terraform を適用できる認証を済ませておきます。
+
+```bash
+bun run build:lambda
+cd infra
+terraform init
+terraform apply
+```
+
+`apply` は DynamoDB テーブルと Lambda をまとめて作ります。URL は末尾が `/` です。
+
+```bash
+FUNCTION_URL=$(terraform output -raw function_url)
+```
+
+この PC の一時認証情報を環境変数に出してから、署名付きで呼びます。
+
+```bash
+eval "$(aws configure export-credentials --format env)"
+
+curl --aws-sigv4 "aws:amz:${AWS_REGION:-ap-northeast-1}:lambda" \
+  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+  -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
+  "${FUNCTION_URL}health"
+
+curl --aws-sigv4 "aws:amz:${AWS_REGION:-ap-northeast-1}:lambda" \
+  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+  -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"demo"}' \
+  "${FUNCTION_URL}items"
+
+curl --aws-sigv4 "aws:amz:${AWS_REGION:-ap-northeast-1}:lambda" \
+  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+  -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
+  "${FUNCTION_URL}items"
+```
+
+署名を付けない `curl` は 403 になります。同じ AWS アカウントの権限がない別の PC からも呼べません。

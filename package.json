@@ -10,11 +10,13 @@
     "start": "bun src/index.ts",
     "typecheck": "tsc --noEmit",
     "build": "bun build src/index.ts --outdir dist --target bun",
+    "build:lambda": "bun build src/lambda.ts --target node --format cjs --outfile dist/lambda/index.cjs --footer 'module.exports = { handler };'",
     "test": "vitest run"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1153.0",
     "@aws-sdk/lib-dynamodb": "^3.1153.0",
+    "@hono/aws-lambda": "^1.0.1",
     "@hono/zod-validator": "0.9.1",
     "hono": "4.13.13",
     "zod": "4.6.7"
