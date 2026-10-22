@@ -1,3 +1,4 @@
+test hooks
 # bun-api-server-demo
 
 Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起動できます。`items` は AWS DynamoDB に保存します。テーブルと Lambda は [Terraform](infra/) です。
