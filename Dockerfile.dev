@@ -40,7 +40,9 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 
 # web/ を /app 直下に潰さない。tsconfig は ../tsconfig.base.json を参照し、
 # Next の turbopack.root はリポジトリルート（この /app）である必要がある
+# web/app は ../../types で共有型を読む
 COPY tsconfig.base.json ./tsconfig.base.json
+COPY types ./types
 COPY web ./web
 WORKDIR /app/web
 ENV NEXT_TELEMETRY_DISABLED=1

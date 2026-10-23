@@ -2,16 +2,12 @@ import { GetCommand, PutCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
+import type { Item } from "../../types/item";
 import { doc, itemsTable } from "./db";
 
 const createItemSchema = z.object({
   name: z.string("name is required").min(1, "name is required"),
 });
-
-type Item = {
-  id: string;
-  name: string;
-};
 
 export const itemsRoute = new Hono();
 

@@ -1,9 +1,5 @@
+import type { Item } from "../../types/item";
 import { ItemForm } from "./item-form";
-
-type Item = {
-  id: string;
-  name: string;
-};
 
 function apiUrl() {
   return process.env.API_URL ?? "http://localhost:3000";

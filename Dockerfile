@@ -60,7 +60,9 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --filter web --filter bun-api-server-demo --linker hoisted --prefer-offline
 
 # 開発イメージと同じく workspace の形を残す。web/tsconfig.json は親の tsconfig.base.json を参照する
+# web/app は ../../types で共有型を読む。Turbopack の root はこの /app
 COPY tsconfig.base.json ./tsconfig.base.json
+COPY types ./types
 COPY web ./web
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app/web

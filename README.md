@@ -9,6 +9,7 @@ Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.j
 ├── package.json       # Bun workspace（api と web）。typescript と vitest はここの devDependencies
 ├── vitest.config.ts   # api と web のユニットテスト
 ├── tsconfig.base.json # api と web で共有する TypeScript 設定
+├── types/             # api と web で共有する型（types/item.ts）
 ├── bun.lock           # api と web で共有
 ├── bunfig.toml
 ├── Dockerfile         # 本番。target は api / web

@@ -46,3 +46,6 @@ services:
         - path: ./tsconfig.base.json
           target: /app/tsconfig.base.json
           action: sync
+        - path: ./types
+          target: /app/types
+          action: sync
