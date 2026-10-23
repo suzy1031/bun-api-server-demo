@@ -28,3 +28,17 @@ services:
           target: /app/src
           # ファイルを同期するだけ。コンテナは再起動しない
           action: sync
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    entrypoint: ["bun", "run", "dev"]
+    develop:
+      watch:
+        - path: ./web/app
+          target: /app/app
+          action: sync
+        - path: ./web/next.config.ts
+          target: /app/next.config.ts
+          action: sync

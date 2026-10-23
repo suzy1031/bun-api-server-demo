@@ -14,3 +14,31 @@ services:
       # DynamoDB のリージョン。未設定時は src/db.ts が ap-northeast-1 を使う
       AWS_REGION: "${AWS_REGION:-ap-northeast-1}"
       ITEMS_TABLE: "${ITEMS_TABLE:-items}"
+      # 起動するシェルの一時キー（aws configure export-credentials --format env）
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const r = await fetch('http://127.0.0.1:3000/health'); if (!r.ok) process.exit(1)",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 3s
+  # Next.js。ブラウザは localhost:3001。API は Docker ネットワークの api:3000
+  web:
+    build: ./web
+    ports:
+      - "3001:3000"
+    environment:
+      API_URL: http://api:3000
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    depends_on:
+      api:
+        condition: service_healthy

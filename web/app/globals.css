@@ -1,0 +1,25 @@
+body {
+  font-family: sans-serif;
+  margin: 2rem;
+}
+
+form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+input {
+  font: inherit;
+  padding: 0.25rem 0.5rem;
+}
+
+li span {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+p[role="alert"] {
+  color: #a40000;
+}

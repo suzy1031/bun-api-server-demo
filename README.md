@@ -1,6 +1,6 @@
 # bun-api-server-demo
 
-Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起動できます。`items` は AWS DynamoDB に保存します。テーブルと Lambda は [Terraform](infra/) です。
+Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.js](https://nextjs.org/) 画面です。どちらも Docker で起動し、`items` は AWS DynamoDB に保存します。ブラウザは Next.js だけを見て、Next.js のサーバーが Bun API を呼びます。テーブルと Lambda は [Terraform](infra/) です。
 
 ## 構成
 
@@ -21,15 +21,21 @@ Bun + [Hono](https://hono.dev/) の最小 REST API。Docker でコンテナ起�
 ├── Dockerfile.dev     # 開発用（bun install）
 ├── docker-compose.yml
 ├── docker-compose.dev.yml   # Docker 開発（Compose Watch で src を sync）
-└── .dockerignore
+├── .dockerignore
+└── web/               # Next.js（既定ページの一覧と投入フォーム）
+    ├── app/
+    ├── Dockerfile     # standalone を Node で起動
+    └── Dockerfile.dev
 ```
 
 | 項目 | 内容 |
 |------|------|
-| ランタイム | Bun |
-| フレームワーク | Hono |
+| API ランタイム | Bun |
+| API フレームワーク | Hono |
+| 画面 | Next.js（ホスト `3001`、コンテナ内 `3000`） |
 | データストア | Amazon DynamoDB |
-| ベースイメージ | `oven/bun:1` |
+| API ベースイメージ | `oven/bun:1` |
+| 画面の本番イメージ | ビルドは Bun、起動は `node:22-alpine` |
 
 ## 作業手順（プランに沿った構築手順）
 
@@ -82,8 +88,9 @@ docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun install
 
 - サービス名 `api`
 - ビルドコンテキストはプロジェクトルート
-- `3000:3000` で公開
-- 環境変数 `PORT=3000`、`AWS_REGION`、`ITEMS_TABLE`
+- API は `3000:3000`、Next.js は `3001:3000`
+- 環境変数 `PORT=3000`、`AWS_REGION`、`ITEMS_TABLE`、AWS の一時キー
+- Next.js の `API_URL` はコンテナ内で `http://api:3000`
 
 ### 5. `.dockerignore`
 
@@ -147,9 +154,14 @@ bun run dev
 
 ### Docker（本番相当・イメージに src を焼き込み）
 
+起動するシェルで一時キーを出してから上げます。API コンテナが AWS の DynamoDB に届くために使います。
+
 ```bash
+eval "$(aws configure export-credentials --format env)"
 docker-compose up --build
 ```
+
+画面は http://localhost:3001 、API は http://localhost:3000 です。
 
 バックグラウンド:
 
@@ -157,7 +169,7 @@ docker-compose up --build
 docker-compose up --build -d
 ```
 
-停止（この節の本番相当。`api` だけ）:
+停止（この節の本番相当。API と Next.js）:
 
 ```bash
 docker-compose down
@@ -187,12 +199,30 @@ bun run dev:docker
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
 ```
 
-ログに `Watch enabled` と `Syncing service "api"` が出れば監視中です。`items` は DynamoDB に残るので、API コンテナを再起動しても消えません。
+ログに `Watch enabled` と `Syncing service "api"` が出れば監視中です。Next.js も同じコマンドで上がり、`web/app` の保存は画面コンテナへ同期されます。`items` は DynamoDB に残るので、API コンテナを再起動しても消えません。
+
+画面は http://localhost:3001 です。ここでも、起動前に `eval "$(aws configure export-credentials --format env)"` で一時キーを渡します。
 
 注意:
 
 - **`docker-compose up` だけ**（`docker-compose.dev.yml` なし、`--watch` なし）では反映されません
 - 依存パッケージ（`package.json`）を変えたときは、イメージの再ビルドが必要です
+
+## 画面
+
+http://localhost:3001 の既定ページに、`items` の一覧と `name` の投入フォームがあります。送信は Next.js の Server Action が `POST /items` し、一覧は `GET /items` です。ブラウザは Bun API に直接繋ぎません。
+
+## DynamoDB テーブルを作り直す
+
+テーブルだけを AWS に作ります。Lambda の zip は要りません。事前に `aws sso login` などで認証します。
+
+```bash
+cd infra
+terraform init
+terraform apply -target=aws_dynamodb_table.items
+```
+
+リージョンは `ap-northeast-1`、テーブル名は `items` です。
 
 ## API
 
@@ -229,6 +259,7 @@ curl http://localhost:3000/items/<id>
 | `AWS_REGION` | `ap-northeast-1` | DynamoDB のリージョン |
 | `ITEMS_TABLE` | `items` | DynamoDB のテーブル名 |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` | なし | 未設定のときは SDK が SSO や IAM ロールを探す。Docker から AWS へ接続するときは、起動するシェルで `aws configure export-credentials --format env` した値を渡す |
+| `API_URL` | `http://localhost:3000` | Next.js が呼ぶ Bun API。Docker 内では `http://api:3000` |
 
 ## Lambda
 
