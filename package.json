@@ -12,5 +12,8 @@
     "test": "bun --filter api test",
     "typecheck": "bun --filter api typecheck",
     "build:lambda": "bun --filter api build:lambda"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
   }
 }
