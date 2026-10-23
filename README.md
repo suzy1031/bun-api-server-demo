@@ -5,23 +5,23 @@ Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.j
 ## 構成
 
 ```text
-├── package.json
-├── bun.lock
-├── tsconfig.json
-├── vitest.config.ts   # Vitest（ユニットテスト）
 ├── infra/             # DynamoDB と Lambda（Terraform）
-├── src/
-│   ├── index.ts       # サーバ起動
-│   ├── lambda.ts      # Lambda ハンドラ（Node.js）
-│   ├── app.ts         # Hono アプリ
-│   ├── app.test.ts    # /health と /items のユニットテスト
-│   ├── db.ts          # DynamoDB Document Client
-│   └── items.ts       # /items ルート
-├── Dockerfile         # マルチステージ（本番用 node_modules）
-├── Dockerfile.dev     # 開発用（bun install）
 ├── docker-compose.yml
-├── docker-compose.dev.yml   # Docker 開発（Compose Watch で src を sync）
-├── .dockerignore
+├── docker-compose.dev.yml   # Docker 開発（Compose Watch で api/src を sync）
+├── api/               # Bun + Hono
+│   ├── package.json
+│   ├── bun.lock
+│   ├── tsconfig.json
+│   ├── vitest.config.ts
+│   ├── Dockerfile     # マルチステージ（本番用 node_modules）
+│   ├── Dockerfile.dev # 開発用（bun install）
+│   └── src/
+│       ├── index.ts   # サーバ起動
+│       ├── lambda.ts  # Lambda ハンドラ（Node.js）
+│       ├── app.ts     # Hono アプリ
+│       ├── app.test.ts
+│       ├── db.ts      # DynamoDB Document Client
+│       └── items.ts   # /items ルート
 └── web/               # Next.js（既定ページの一覧と投入フォーム）
     ├── app/
     ├── Dockerfile     # standalone を Node で起動
@@ -44,6 +44,7 @@ Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.j
 ### 1. Bun プロジェクトの初期化
 
 ```bash
+mkdir api && cd api
 bun init -y
 bun add hono
 bun add -d typescript @types/bun
@@ -64,7 +65,7 @@ docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun install
 
 `bun.lock` はコミット対象にしてください。Docker ビルドの `bun install --frozen-lockfile` で使います。
 
-### 2. API の実装（`src/index.ts`）
+### 2. API の実装（`api/src/index.ts`）
 
 1. `Hono` インスタンスを作成
 2. ルートを定義
@@ -87,7 +88,7 @@ docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun install
 ### 4. docker-compose.yml
 
 - サービス名 `api`
-- ビルドコンテキストはプロジェクトルート
+- API のビルドコンテキストは `api/`
 - API は `3000:3000`、Next.js は `3001:3000`
 - 環境変数 `PORT=3000`、`AWS_REGION`、`ITEMS_TABLE`、AWS の一時キー
 - Next.js の `API_URL` はコンテナ内で `http://api:3000`
@@ -105,6 +106,7 @@ docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun install
 ローカル（Bun あり）。AWS の認証情報は SDK の自動探索に任せます。
 
 ```bash
+cd api
 bun install
 bun run dev
 curl http://localhost:3000/health
@@ -127,14 +129,15 @@ curl http://localhost:3000/items
 型チェックとユニットテスト（Bun あり）:
 
 ```bash
+cd api
 bun run typecheck
 bun run test
 ```
 
-Bun が手元にない場合のユニットテスト。AWS には接続しません。
+Bun が手元にない場合のユニットテスト。AWS には接続しません。リポジトリルートで実行します。
 
 ```bash
-docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun run test
+docker run --rm -v "$PWD/api":/usr/src/app -w /usr/src/app oven/bun:1 bun run test
 ```
 
 ## 前提
@@ -149,6 +152,7 @@ docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun run test
 ホストの Bun から DynamoDB へ接続します。事前に `aws sso login` などで認証しておきます。
 
 ```bash
+cd api
 bun run dev
 ```
 
@@ -178,7 +182,7 @@ docker-compose down
 
 Mac / Colima では、バインドマウント越しの `bun --watch` も、Compose の `restart` も途中で切れます。開発時は次の分担です。
 
-- Compose `--watch` がホストの `src/` 保存を検知し、コンテナ内へ **sync だけ**する
+- Compose `--watch` がホストの `api/src/` 保存を検知し、コンテナ内へ **sync だけ**する
 - コンテナ内の `bun --watch` が、同期されたファイルを見てプロセスを再起動する
 
 **`--watch` が必須です。**
@@ -190,6 +194,7 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watc
 または:
 
 ```bash
+cd api
 bun run dev:docker
 ```
 
@@ -268,8 +273,9 @@ curl http://localhost:3000/items/<id>
 事前に `aws sso login` などで、この Terraform を適用できる認証を済ませておきます。
 
 ```bash
+cd api
 bun run build:lambda
-cd infra
+cd ../infra
 terraform init
 terraform apply
 ```

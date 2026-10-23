@@ -5,8 +5,8 @@ services:
   api:
     # 本番 Dockerfile ではなく開発用イメージを使う
     build:
-      # ビルドコンテキスト（プロジェクトルート）
-      context: .
+      # ビルドコンテキスト（api/）
+      context: ./api
       # 使う Dockerfile
       dockerfile: Dockerfile.dev
     # コンテナ内のカレントディレクトリ（Dockerfile.dev の WORKDIR と揃える）
@@ -23,7 +23,7 @@ services:
     develop:
       watch:
         # ホスト側で監視するパス
-        - path: ./src
+        - path: ./api/src
           # コピー先（コンテナ内）
           target: /app/src
           # ファイルを同期するだけ。コンテナは再起動しない

@@ -2,16 +2,16 @@
 services:
   # API サーバ 1 つ
   api:
-    # カレントディレクトリの Dockerfile（本番用マルチステージ）でイメージをビルド
-    build: .
+    # api/Dockerfile（本番用マルチステージ）でイメージをビルド
+    build: ./api
     # ホスト:コンテナ のポート対応。ブラウザは localhost:3000
     ports:
       - "3000:3000"
     # コンテナ内のプロセスに渡す環境変数
     environment:
-      # src/index.ts が読む待ち受けポート
+      # api/src/index.ts が読む待ち受けポート
       PORT: "3000"
-      # DynamoDB のリージョン。未設定時は src/db.ts が ap-northeast-1 を使う
+      # DynamoDB のリージョン。未設定時は api/src/db.ts が ap-northeast-1 を使う
       AWS_REGION: "${AWS_REGION:-ap-northeast-1}"
       ITEMS_TABLE: "${ITEMS_TABLE:-items}"
       # 起動するシェルの一時キー（aws configure export-credentials --format env）

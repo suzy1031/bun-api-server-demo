@@ -7,8 +7,8 @@ data "aws_caller_identity" "current" {}
 
 data "archive_file" "lambda" {
   type        = "zip"
-  source_file = "${path.module}/../dist/lambda/index.cjs"
-  output_path = "${path.module}/../dist/lambda/index.zip"
+  source_file = "${path.module}/../api/dist/lambda/index.cjs"
+  output_path = "${path.module}/../api/dist/lambda/index.zip"
 }
 
 # 信頼ポリシーのJSONを組み立てる
@@ -62,7 +62,7 @@ resource "aws_cloudwatch_log_group" "lambda" {
   retention_in_days = 14
 }
 
-# 関数本体｡ `src/lambda.ts`のhandlerを呼ぶ
+# 関数本体｡ `api/src/lambda.ts`のhandlerを呼ぶ
 resource "aws_lambda_function" "api" {
   function_name    = var.function_name
   role             = aws_iam_role.lambda.arn
