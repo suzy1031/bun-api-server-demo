@@ -1,6 +1,7 @@
 {
   "name": "bun-api-server-demo",
   "private": true,
+  "type": "module",
   "workspaces": ["api", "web"],
   "scripts": {
     "dev:api": "bun --filter api dev",
@@ -9,11 +10,12 @@
     "dev:docker:down": "COMPOSE_MENU=0 docker-compose -f docker-compose.yml -f docker-compose.dev.yml down",
     "docker": "COMPOSE_MENU=0 docker-compose up --build",
     "docker:down": "COMPOSE_MENU=0 docker-compose down",
-    "test": "bun --filter api test",
-    "typecheck": "bun --filter api typecheck",
+    "test": "vitest run",
+    "typecheck": "tsc -p api --noEmit && (cd web && bunx next typegen) && tsc -p web --noEmit",
     "build:lambda": "bun --filter api build:lambda"
   },
   "devDependencies": {
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
   }
 }
