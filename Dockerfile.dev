@@ -1,19 +1,35 @@
 # syntax=docker/dockerfile:1
-# 開発用の単一ステージ。公式 Bun 1.x
-FROM oven/bun:1
+
+# --- API（開発）---
+# Compose の target: api。公式 Bun 1.x
+FROM oven/bun:1 AS api
 # 作業ディレクトリ（compose.dev の working_dir / Watch の target と揃える）
 WORKDIR /app
 
 # 依存定義を先にコピーして、install 層をキャッシュしやすくする
-COPY package.json bun.lock ./
+COPY api/package.json api/bun.lock ./
 # 開発に必要な依存を入れる
 # tarball は BuildKit キャッシュに残す。--prefer-offline でメタデータの再取得を避け、足りないパッケージだけ落とす
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --prefer-offline
 # 起動時点のソースをイメージに入れておく（以降の変更は Compose Watch が sync）
-COPY src ./src
+COPY api/src ./src
 
 # 開発サーバが使うポート（公開は compose の ports）
 EXPOSE 3000
 # ファイル変更でプロセスを再起動する開発サーバ
+CMD ["bun", "run", "dev"]
+
+# --- Web（開発）---
+# Compose の target: web
+FROM oven/bun:1 AS web
+WORKDIR /app
+
+COPY web/package.json web/bun.lock ./
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --frozen-lockfile --prefer-offline
+
+COPY web/ .
+ENV NEXT_TELEMETRY_DISABLED=1
+EXPOSE 3000
 CMD ["bun", "run", "dev"]

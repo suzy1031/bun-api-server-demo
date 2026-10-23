@@ -6,6 +6,9 @@ Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.j
 
 ```text
 ├── infra/             # DynamoDB と Lambda（Terraform）
+├── Dockerfile         # 本番。target は api / web
+├── Dockerfile.dev     # 開発。target は api / web
+├── .dockerignore
 ├── docker-compose.yml
 ├── docker-compose.dev.yml   # Docker 開発（Compose Watch で api/src を sync）
 ├── api/               # Bun + Hono
@@ -13,8 +16,6 @@ Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.j
 │   ├── bun.lock
 │   ├── tsconfig.json
 │   ├── vitest.config.ts
-│   ├── Dockerfile     # マルチステージ（本番用 node_modules）
-│   ├── Dockerfile.dev # 開発用（bun install）
 │   └── src/
 │       ├── index.ts   # サーバ起動
 │       ├── lambda.ts  # Lambda ハンドラ（Node.js）
@@ -23,9 +24,7 @@ Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.j
 │       ├── db.ts      # DynamoDB Document Client
 │       └── items.ts   # /items ルート
 └── web/               # Next.js（既定ページの一覧と投入フォーム）
-    ├── app/
-    ├── Dockerfile     # standalone を Node で起動
-    └── Dockerfile.dev
+    └── app/
 ```
 
 | 項目 | 内容 |
@@ -35,7 +34,7 @@ Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.j
 | 画面 | Next.js（ホスト `3001`、コンテナ内 `3000`） |
 | データストア | Amazon DynamoDB |
 | API ベースイメージ | `oven/bun:1` |
-| 画面の本番イメージ | ビルドは Bun、起動は `node:22-alpine` |
+| 画面の本番イメージ | ビルドは Bun、起動は `node:26-alpine` |
 
 ## 作業手順（プランに沿った構築手順）
 
@@ -78,28 +77,29 @@ docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun install
 
 ### 3. Dockerfile（マルチステージ）
 
-[Bun 公式の Docker ガイド](https://bun.com/docs/guides/ecosystem/docker) に沿った構成:
+本番はリポジトリ直下の `Dockerfile`、開発は `Dockerfile.dev` です。どちらも API と Next.js のステージを置き、Compose は `target` でイメージを選びます。API の依存インストールは [Bun 公式の Docker ガイド](https://bun.com/docs/guides/ecosystem/docker) に沿います。
 
-1. **base** — `FROM oven/bun:1`、`WORKDIR /usr/src/app`
-2. **install** — dev / prod 用に `bun install --frozen-lockfile`（prod は `--production`）
-3. **release** — prod の `node_modules`、`package.json`、`src/` をコピー
-4. `USER bun`、`EXPOSE 3000`、`ENTRYPOINT ["bun", "run", "start"]`
+1. **api**（`Dockerfile`）— `oven/bun:1`。dev / prod 用に `bun install --frozen-lockfile`（prod は `--production`）。最終ステージは prod の `node_modules`、`package.json`、`src/`。`USER bun`、`EXPOSE 3000`、`ENTRYPOINT ["bun", "run", "start"]`
+2. **web**（`Dockerfile`）— ビルドは Bun、起動は `node:26-alpine` の standalone（`node server.js`）
+3. **api** / **web**（`Dockerfile.dev`）— 開発用。`docker-compose.dev.yml` がこのファイルを使う
 
 ### 4. docker-compose.yml
 
-- サービス名 `api`
-- API のビルドコンテキストは `api/`
+- サービス名 `api` と `web`
+- ビルドコンテキストはリポジトリルート。`target` は本番も開発も `api` / `web`。開発は `Dockerfile.dev` を使う
 - API は `3000:3000`、Next.js は `3001:3000`
 - 環境変数 `PORT=3000`、`AWS_REGION`、`ITEMS_TABLE`、AWS の一時キー
 - Next.js の `API_URL` はコンテナ内で `http://api:3000`
 
 ### 5. `.dockerignore`
 
-ビルドを軽くするため、少なくとも次を除外:
+ビルドコンテキストはリポジトリルートなので、除外はルートの `.dockerignore` に書く。少なくとも次を除外:
 
-- `node_modules`
+- `**/node_modules`
+- `**/.next`
+- `**/dist`
 - `.git`
-- `*.md`（任意）
+- `*.md`
 
 ### 6. 動作確認
 

@@ -3,11 +3,9 @@
 # Colima では action: restart すると Watch が context canceled で死ぬため sync のみ
 services:
   api:
-    # 本番 Dockerfile ではなく開発用イメージを使う
+    # 開発用イメージ。target は本番と同じ api / web のまま
     build:
-      # ビルドコンテキスト（api/）
-      context: ./api
-      # 使う Dockerfile
+      context: .
       dockerfile: Dockerfile.dev
     # コンテナ内のカレントディレクトリ（Dockerfile.dev の WORKDIR と揃える）
     working_dir: /app
@@ -30,7 +28,7 @@ services:
           action: sync
   web:
     build:
-      context: ./web
+      context: .
       dockerfile: Dockerfile.dev
     working_dir: /app
     entrypoint: ["bun", "run", "dev"]
