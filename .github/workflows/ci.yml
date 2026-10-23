@@ -10,7 +10,7 @@ jobs:
         with:
           bun-version: "1"
       - run: bun install --frozen-lockfile
-      - run: bun --filter api typecheck
+      - run: bun run typecheck
       - run: bun --filter api build
       - run: bun --filter api build:lambda
-      - run: bun --filter api test
+      - run: bun run test

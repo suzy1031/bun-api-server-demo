@@ -59,8 +59,11 @@ COPY web/package.json web/package.json
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --filter web --filter bun-api-server-demo --linker hoisted --prefer-offline
 
-COPY web/ .
+# 開発イメージと同じく workspace の形を残す。web/tsconfig.json は親の tsconfig.base.json を参照する
+COPY tsconfig.base.json ./tsconfig.base.json
+COPY web ./web
 ENV NEXT_TELEMETRY_DISABLED=1
+WORKDIR /app/web
 RUN bun run build
 
 FROM node:26-alpine AS web
@@ -70,8 +73,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-COPY --from=web-build /app/.next/standalone ./
-COPY --from=web-build /app/.next/static ./.next/static
+# outputFileTracingRoot がリポジトリルートなので、standalone は web/server.js を含む
+COPY --from=web-build /app/web/.next/standalone ./
+COPY --from=web-build /app/web/.next/static ./web/.next/static
 
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["node", "web/server.js"]

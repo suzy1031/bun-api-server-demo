@@ -6,6 +6,7 @@
       "name": "bun-api-server-demo",
       "devDependencies": {
         "typescript": "7.0.2",
+        "vitest": "5.0.5",
       },
     },
     "api": {
@@ -20,7 +21,6 @@
       },
       "devDependencies": {
         "@types/bun": "1.4.3",
-        "vitest": "5.0.5",
       },
     },
     "web": {

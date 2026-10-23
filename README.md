@@ -6,7 +6,8 @@ Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.j
 
 ```text
 ├── infra/             # DynamoDB と Lambda（Terraform）
-├── package.json       # Bun workspace（api と web）。typescript はここの devDependencies
+├── package.json       # Bun workspace（api と web）。typescript と vitest はここの devDependencies
+├── vitest.config.ts   # api と web のユニットテスト
 ├── tsconfig.base.json # api と web で共有する TypeScript 設定
 ├── bun.lock           # api と web で共有
 ├── bunfig.toml
@@ -18,7 +19,6 @@ Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.j
 ├── api/               # Bun + Hono
 │   ├── package.json
 │   ├── tsconfig.json
-│   ├── vitest.config.ts
 │   └── src/
 │       ├── index.ts   # サーバ起動
 │       ├── lambda.ts  # Lambda ハンドラ（Node.js）
@@ -53,14 +53,14 @@ bun add hono
 bun add -d typescript @types/bun
 ```
 
-今のリポジトリは、このあとルートを Bun workspace にしている。`package.json` の `workspaces` は `api` と `web` で、依存のインストールと `bun.lock` はルートに一つだけある。`typescript` もルートの devDependencies に一つだけ置く。
+今のリポジトリは、このあとルートを Bun workspace にしている。`package.json` の `workspaces` は `api` と `web` で、依存のインストールと `bun.lock` はルートに一つだけある。`typescript` と `vitest` もルートの devDependencies に一つだけ置く。
 
-`package.json` にスクリプトを追加:
+`api/package.json` にスクリプトを追加:
 
 - `dev` — ホットリロード付き開発サーバ
 - `start` — 本番相当の起動
-- `typecheck` — TypeScript の型チェック
-- `test` — Vitest のユニットテスト（DynamoDB はモックし、AWS には接続しない）
+
+ルートの `test` は Vitest。API と Next.js の両方を実行する。API の DynamoDB はモックし、AWS には接続しない。
 
 Bun が手元にない場合は、Docker で lockfile を生成できます:
 
@@ -86,7 +86,7 @@ docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun install
 本番はリポジトリ直下の `Dockerfile`、開発は `Dockerfile.dev` です。どちらも API と Next.js のステージを置き、Compose は `target` でイメージを選びます。API の依存インストールは [Bun 公式の Docker ガイド](https://bun.com/docs/guides/ecosystem/docker) に沿います。
 
 1. **api**（`Dockerfile`）— `oven/bun:1`。ルートの workspace から `bun install --frozen-lockfile --filter api`（prod は `--production`）。最終ステージは prod の `node_modules`、`api/package.json`、`src/`。`USER bun`、`EXPOSE 3000`、`ENTRYPOINT ["bun", "run", "start"]`
-2. **web**（`Dockerfile`）— ビルドは Bun、起動は `node:26-alpine` の standalone（`node server.js`）
+2. **web**（`Dockerfile`）— ビルドは Bun、起動は `node:26-alpine` の standalone（`node web/server.js`）
 3. **api** / **web**（`Dockerfile.dev`）— 開発用。`docker-compose.dev.yml` がこのファイルを使う
 
 ### 4. docker-compose.yml
@@ -131,7 +131,7 @@ curl -X POST http://localhost:3000/items \
 curl http://localhost:3000/items
 ```
 
-型チェックとユニットテスト（Bun あり）:
+型チェック（api と web）とユニットテスト（Bun あり）:
 
 ```bash
 bun run typecheck
@@ -141,7 +141,7 @@ bun run test
 Bun が手元にない場合のユニットテスト。AWS には接続しません。リポジトリルートで実行します。
 
 ```bash
-docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun --filter api test
+docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun run test
 ```
 
 ## 前提

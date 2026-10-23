@@ -5,10 +5,8 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
-    "typecheck": "tsc --noEmit",
     "build": "bun build src/index.ts --outdir dist --target bun",
-    "build:lambda": "bun build src/lambda.ts --target node --format cjs --outfile dist/lambda/index.cjs --footer 'module.exports = { handler };'",
-    "test": "vitest run"
+    "build:lambda": "bun build src/lambda.ts --target node --format cjs --outfile dist/lambda/index.cjs --footer 'module.exports = { handler };'"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1153.0",
@@ -19,7 +17,6 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@types/bun": "1.4.3",
-    "vitest": "5.0.5"
+    "@types/bun": "1.4.3"
   }
 }

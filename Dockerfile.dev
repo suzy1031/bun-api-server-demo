@@ -38,7 +38,11 @@ COPY web/package.json web/package.json
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --filter web --filter bun-api-server-demo --linker hoisted --prefer-offline
 
-COPY web/ .
+# web/ を /app 直下に潰さない。tsconfig は ../tsconfig.base.json を参照し、
+# Next の turbopack.root はリポジトリルート（この /app）である必要がある
+COPY tsconfig.base.json ./tsconfig.base.json
+COPY web ./web
+WORKDIR /app/web
 ENV NEXT_TELEMETRY_DISABLED=1
 EXPOSE 3000
 CMD ["bun", "run", "dev"]

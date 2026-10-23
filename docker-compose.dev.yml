@@ -30,13 +30,19 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    working_dir: /app
+    working_dir: /app/web
     entrypoint: ["bun", "run", "dev"]
     develop:
       watch:
         - path: ./web/app
-          target: /app/app
+          target: /app/web/app
           action: sync
         - path: ./web/next.config.ts
-          target: /app/next.config.ts
+          target: /app/web/next.config.ts
+          action: sync
+        - path: ./web/tsconfig.json
+          target: /app/web/tsconfig.json
+          action: sync
+        - path: ./tsconfig.base.json
+          target: /app/tsconfig.base.json
           action: sync
