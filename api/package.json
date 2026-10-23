@@ -4,9 +4,6 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "dev:docker": "COMPOSE_MENU=0 docker-compose -f ../docker-compose.yml -f ../docker-compose.dev.yml --project-directory .. up --build --watch",
-    "dev:docker:down": "COMPOSE_MENU=0 docker-compose -f ../docker-compose.yml -f ../docker-compose.dev.yml --project-directory .. down",
-    "docker:down": "COMPOSE_MENU=0 docker-compose -f ../docker-compose.yml --project-directory .. down",
     "start": "bun src/index.ts",
     "typecheck": "tsc --noEmit",
     "build": "bun build src/index.ts --outdir dist --target bun",

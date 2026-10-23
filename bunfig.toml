@@ -1,0 +1,3 @@
+[install]
+# イメージは workspace ルートの node_modules だけを実行ディレクトリへコピーする
+linker = "hoisted"

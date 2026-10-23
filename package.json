@@ -1,0 +1,16 @@
+{
+  "name": "bun-api-server-demo",
+  "private": true,
+  "workspaces": ["api", "web"],
+  "scripts": {
+    "dev:api": "bun --filter api dev",
+    "dev:web": "bun --filter web dev",
+    "dev:docker": "COMPOSE_MENU=0 docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch",
+    "dev:docker:down": "COMPOSE_MENU=0 docker-compose -f docker-compose.yml -f docker-compose.dev.yml down",
+    "docker": "COMPOSE_MENU=0 docker-compose up --build",
+    "docker:down": "COMPOSE_MENU=0 docker-compose down",
+    "test": "bun --filter api test",
+    "typecheck": "bun --filter api typecheck",
+    "build:lambda": "bun --filter api build:lambda"
+  }
+}
