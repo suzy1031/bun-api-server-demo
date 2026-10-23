@@ -31,11 +31,12 @@ FROM oven/bun:1 AS web
 WORKDIR /app
 
 # ルートの workspace 定義と lockfile、各パッケージの package.json が揃って frozen install できる
+# typescript はルートの devDependency なので、web に加えてルートパッケージも入れる
 COPY package.json bun.lock bunfig.toml ./
 COPY api/package.json api/package.json
 COPY web/package.json web/package.json
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --filter web --linker hoisted --prefer-offline
+    bun install --frozen-lockfile --filter web --filter bun-api-server-demo --linker hoisted --prefer-offline
 
 COPY web/ .
 ENV NEXT_TELEMETRY_DISABLED=1

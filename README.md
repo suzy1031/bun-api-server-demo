@@ -6,7 +6,8 @@ Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.j
 
 ```text
 ├── infra/             # DynamoDB と Lambda（Terraform）
-├── package.json       # Bun workspace（api と web）
+├── package.json       # Bun workspace（api と web）。typescript はここの devDependencies
+├── tsconfig.base.json # api と web で共有する TypeScript 設定
 ├── bun.lock           # api と web で共有
 ├── bunfig.toml
 ├── Dockerfile         # 本番。target は api / web
@@ -52,7 +53,7 @@ bun add hono
 bun add -d typescript @types/bun
 ```
 
-今のリポジトリは、このあとルートを Bun workspace にしている。`package.json` の `workspaces` は `api` と `web` で、依存のインストールと `bun.lock` はルートに一つだけある。
+今のリポジトリは、このあとルートを Bun workspace にしている。`package.json` の `workspaces` は `api` と `web` で、依存のインストールと `bun.lock` はルートに一つだけある。`typescript` もルートの devDependencies に一つだけ置く。
 
 `package.json` にスクリプトを追加:
 
