@@ -4,16 +4,13 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1"
       - run: bun install --frozen-lockfile
-      - run: bun run typecheck
-      - run: bun run build
-      - run: bun run build:lambda
-      - run: bun run test
+      - run: bun --filter api typecheck
+      - run: bun --filter api build
+      - run: bun --filter api build:lambda
+      - run: bun --filter api test

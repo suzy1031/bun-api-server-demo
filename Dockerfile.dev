@@ -7,11 +7,16 @@ FROM oven/bun:1 AS api
 WORKDIR /app
 
 # 依存定義を先にコピーして、install 層をキャッシュしやすくする
-COPY api/package.json api/bun.lock ./
-# 開発に必要な依存を入れる
+# ルートの workspace 定義と lockfile、各パッケージの package.json が揃って frozen install できる
+COPY package.json bun.lock bunfig.toml ./
+COPY api/package.json api/package.json
+COPY web/package.json web/package.json
+# 開発に必要な api の依存を入れる。hoisted なので /app/node_modules に揃う
 # tarball は BuildKit キャッシュに残す。--prefer-offline でメタデータの再取得を避け、足りないパッケージだけ落とす
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --prefer-offline
+    bun install --frozen-lockfile --filter api --linker hoisted --prefer-offline
+# bun run dev は api の scripts を読む。workspace ルートの package.json はここで上書きする
+COPY api/package.json ./package.json
 # 起動時点のソースをイメージに入れておく（以降の変更は Compose Watch が sync）
 COPY api/src ./src
 
@@ -25,9 +30,12 @@ CMD ["bun", "run", "dev"]
 FROM oven/bun:1 AS web
 WORKDIR /app
 
-COPY web/package.json web/bun.lock ./
+# ルートの workspace 定義と lockfile、各パッケージの package.json が揃って frozen install できる
+COPY package.json bun.lock bunfig.toml ./
+COPY api/package.json api/package.json
+COPY web/package.json web/package.json
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --prefer-offline
+    bun install --frozen-lockfile --filter web --linker hoisted --prefer-offline
 
 COPY web/ .
 ENV NEXT_TELEMETRY_DISABLED=1

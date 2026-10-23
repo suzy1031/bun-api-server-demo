@@ -11,18 +11,24 @@ FROM api-base AS api-install
 # lockfile 付き install 用の一時ディレクトリ（dev 依存込み）
 RUN mkdir -p /temp/dev
 # マニフェストを先にコピーして、依存が変わらない限りこの層をキャッシュする
-COPY api/package.json api/bun.lock /temp/dev/
-# lockfile どおりに全依存を入れる（typecheck 用など）
+# ルートの workspace 定義と lockfile、各パッケージの package.json が揃って frozen install できる
+COPY package.json bun.lock bunfig.toml /temp/dev/
+COPY api/package.json /temp/dev/api/package.json
+COPY web/package.json /temp/dev/web/package.json
+# lockfile どおりに api の全依存を入れる（typecheck 用など）
+# hoisted なのでパッケージは /temp/dev/node_modules に揃う
 # tarball は BuildKit キャッシュに残す。--prefer-offline でメタデータの再取得を避け、足りないパッケージだけ落とす
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    cd /temp/dev && bun install --frozen-lockfile --prefer-offline
+    cd /temp/dev && bun install --frozen-lockfile --filter api --linker hoisted --prefer-offline
 
 # 本番用 node_modules を別ディレクトリに入れる
 RUN mkdir -p /temp/prod
-COPY api/package.json api/bun.lock /temp/prod/
-# 本番に必要なパッケージだけ入れる（typescript などは除外）
+COPY package.json bun.lock bunfig.toml /temp/prod/
+COPY api/package.json /temp/prod/api/package.json
+COPY web/package.json /temp/prod/web/package.json
+# 本番に必要な api のパッケージだけ入れる（typescript や web は除外）
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    cd /temp/prod && bun install --frozen-lockfile --production --prefer-offline
+    cd /temp/prod && bun install --frozen-lockfile --production --filter api --linker hoisted --prefer-offline
 
 # Compose の target: api。実際に docker run される最終ステージ
 FROM api-base AS api
@@ -45,9 +51,12 @@ ENTRYPOINT ["bun", "run", "start"]
 FROM oven/bun:1 AS web-build
 WORKDIR /app
 
-COPY web/package.json web/bun.lock ./
+# ルートの workspace 定義と lockfile、各パッケージの package.json が揃って frozen install できる
+COPY package.json bun.lock bunfig.toml ./
+COPY api/package.json api/package.json
+COPY web/package.json web/package.json
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --prefer-offline
+    bun install --frozen-lockfile --filter web --linker hoisted --prefer-offline
 
 COPY web/ .
 ENV NEXT_TELEMETRY_DISABLED=1
