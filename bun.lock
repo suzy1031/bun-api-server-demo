@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "bun-api-server-demo",
+      "dependencies": {
+        "zod": "4.6.7",
+      },
       "devDependencies": {
         "typescript": "7.0.2",
         "vitest": "5.0.5",
@@ -17,7 +20,6 @@
         "@hono/aws-lambda": "^1.0.1",
         "@hono/zod-validator": "0.9.1",
         "hono": "4.13.13",
-        "zod": "4.6.7",
       },
       "devDependencies": {
         "@types/bun": "1.4.3",
