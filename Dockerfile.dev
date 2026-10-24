@@ -11,10 +11,10 @@ WORKDIR /app
 COPY package.json bun.lock bunfig.toml ./
 COPY api/package.json api/package.json
 COPY web/package.json web/package.json
-# 開発に必要な api の依存を入れる。hoisted なので /app/node_modules に揃う
+# 開発に必要な api とルートの依存を入れる。zod はルートの dependencies。hoisted なので /app/node_modules に揃う
 # tarball は BuildKit キャッシュに残す。--prefer-offline でメタデータの再取得を避け、足りないパッケージだけ落とす
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --filter api --linker hoisted --prefer-offline
+    bun install --frozen-lockfile --filter api --filter bun-api-server-demo --linker hoisted --prefer-offline
 # bun run dev は api の scripts を読む。workspace ルートの package.json はここで上書きする
 COPY api/package.json ./package.json
 # 起動時点のソースをイメージに入れておく（以降の変更は Compose Watch が sync）

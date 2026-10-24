@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 export type CreateItemState = { error: string | null };
 
@@ -12,10 +13,15 @@ export async function createItem(
   _prev: CreateItemState,
   formData: FormData,
 ): Promise<CreateItemState> {
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) {
-    return { error: "name is required" };
+  const parsed = z
+    .object({
+      name: z.string().trim().min(1, "name is required"),
+    })
+    .safeParse({ name: String(formData.get("name") ?? "") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "name is required" };
   }
+  const { name } = parsed.data;
 
   let response: Response;
   try {

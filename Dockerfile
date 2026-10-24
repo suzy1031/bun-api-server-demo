@@ -15,20 +15,20 @@ RUN mkdir -p /temp/dev
 COPY package.json bun.lock bunfig.toml /temp/dev/
 COPY api/package.json /temp/dev/api/package.json
 COPY web/package.json /temp/dev/web/package.json
-# lockfile どおりに api の全依存を入れる（typecheck 用など）
+# lockfile どおりに api とルートの依存を入れる。zod はルートの dependencies
 # hoisted なのでパッケージは /temp/dev/node_modules に揃う
 # tarball は BuildKit キャッシュに残す。--prefer-offline でメタデータの再取得を避け、足りないパッケージだけ落とす
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    cd /temp/dev && bun install --frozen-lockfile --filter api --linker hoisted --prefer-offline
+    cd /temp/dev && bun install --frozen-lockfile --filter api --filter bun-api-server-demo --linker hoisted --prefer-offline
 
 # 本番用 node_modules を別ディレクトリに入れる
 RUN mkdir -p /temp/prod
 COPY package.json bun.lock bunfig.toml /temp/prod/
 COPY api/package.json /temp/prod/api/package.json
 COPY web/package.json /temp/prod/web/package.json
-# 本番に必要な api のパッケージだけ入れる（typescript や web は除外）
+# 本番に必要な api とルートの dependencies だけ入れる（typescript や web は除外）
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    cd /temp/prod && bun install --frozen-lockfile --production --filter api --linker hoisted --prefer-offline
+    cd /temp/prod && bun install --frozen-lockfile --production --filter api --filter bun-api-server-demo --linker hoisted --prefer-offline
 
 # Compose の target: api。実際に docker run される最終ステージ
 FROM api-base AS api
