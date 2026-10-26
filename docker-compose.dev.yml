@@ -1,5 +1,5 @@
 # docker-compose.yml に重ねて開発用の差分だけ上書きする
-# 起動: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
+# 起動: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --watch
 # Colima では action: restart すると Watch が context canceled で死ぬため sync のみ
 services:
   api:

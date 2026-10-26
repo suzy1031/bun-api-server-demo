@@ -47,7 +47,7 @@ EXPOSE 3000/tcp
 ENTRYPOINT ["bun", "run", "start"]
 
 # --- Web（本番）---
-# ビルドは Bun。Compose の最終イメージは target: web
+# ビルドも起動も Bun。Compose の最終イメージは target: web
 FROM oven/bun:1 AS web-build
 WORKDIR /app
 
@@ -68,7 +68,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app/web
 RUN bun run build
 
-FROM node:26-alpine AS web
+FROM oven/bun:1 AS web
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -76,8 +76,11 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
 # outputFileTracingRoot がリポジトリルートなので、standalone は web/server.js を含む
-COPY --from=web-build /app/web/.next/standalone ./
-COPY --from=web-build /app/web/.next/static ./web/.next/static
+COPY --from=web-build --chown=bun:bun /app/web/.next/standalone ./
+COPY --from=web-build --chown=bun:bun /app/web/.next/static ./web/.next/static
+# 実行時のキャッシュを bun ユーザが書けるようにする
+RUN mkdir -p web/.next/cache && chown bun:bun web/.next/cache
 
+USER bun
 EXPOSE 3000
-CMD ["node", "web/server.js"]
+CMD ["bun", "web/server.js"]

@@ -35,7 +35,7 @@ services:
       start_period: 3s
   # Next.js。ブラウザは localhost:3001。API は Docker ネットワークの api:3000
   web:
-    # ルート Dockerfile の target: web（ビルドは Bun、起動は node:26-alpine）
+    # ルート Dockerfile の target: web（ビルドも起動も oven/bun:1）
     build:
       context: .
       dockerfile: Dockerfile

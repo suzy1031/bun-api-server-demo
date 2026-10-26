@@ -39,7 +39,7 @@ Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.j
 | 画面 | Next.js（ホスト `3001`、コンテナ内 `3000`） |
 | データストア | Amazon DynamoDB |
 | API ベースイメージ | `oven/bun:1` |
-| 画面の本番イメージ | ビルドは Bun、起動は `node:26-alpine` |
+| 画面の本番イメージ | ビルドも起動も `oven/bun:1`（standalone を `bun web/server.js`） |
 
 ## 作業手順（プランに沿った構築手順）
 
@@ -87,7 +87,7 @@ docker run --rm -v "$PWD":/usr/src/app -w /usr/src/app oven/bun:1 bun install
 本番はリポジトリ直下の `Dockerfile`、開発は `Dockerfile.dev` です。どちらも API と Next.js のステージを置き、Compose は `target` でイメージを選びます。API の依存インストールは [Bun 公式の Docker ガイド](https://bun.com/docs/guides/ecosystem/docker) に沿います。
 
 1. **api**（`Dockerfile`）— `oven/bun:1`。ルートの workspace から `bun install --frozen-lockfile --filter api --filter bun-api-server-demo`（prod は `--production`）。ルート側は zod を入れるため。最終ステージは prod の `node_modules`、`api/package.json`、`src/`。`USER bun`、`EXPOSE 3000`、`ENTRYPOINT ["bun", "run", "start"]`
-2. **web**（`Dockerfile`）— ビルドは Bun、起動は `node:26-alpine` の standalone（`node web/server.js`）
+2. **web**（`Dockerfile`）— ビルドも起動も `oven/bun:1`。standalone を `bun web/server.js` で起動する
 3. **api** / **web**（`Dockerfile.dev`）— 開発用。`docker-compose.dev.yml` がこのファイルを使う
 
 ### 4. docker-compose.yml

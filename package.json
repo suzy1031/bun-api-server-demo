@@ -6,7 +6,7 @@
   "scripts": {
     "dev:api": "bun --filter api dev",
     "dev:web": "bun --filter web dev",
-    "dev:docker": "COMPOSE_MENU=0 docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch",
+    "dev:docker": "COMPOSE_MENU=0 docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --watch",
     "dev:docker:down": "COMPOSE_MENU=0 docker-compose -f docker-compose.yml -f docker-compose.dev.yml down",
     "docker": "COMPOSE_MENU=0 docker-compose up --build",
     "docker:down": "COMPOSE_MENU=0 docker-compose down",
