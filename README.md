@@ -1,11 +1,11 @@
 # bun-api-server-demo
 
-Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.js](https://nextjs.org/) 画面です。どちらも Docker で起動し、`items` は AWS DynamoDB に保存します。ブラウザは Next.js だけを見て、Next.js のサーバーが Bun API を呼びます。テーブルと Lambda は [Terraform](infra/) です。
+Bun + [Hono](https://hono.dev/) の最小 REST API と、その前段の [Next.js](https://nextjs.org/) 画面です。どちらも Docker で起動し、`items` は AWS DynamoDB に保存します。ブラウザは Next.js だけを見て、Next.js のサーバーが Bun API を呼びます。テーブル、Lambda、ALB と Fargate は [Terraform](infra/) です。
 
 ## 構成
 
 ```text
-├── infra/             # DynamoDB と Lambda（Terraform）
+├── infra/             # DynamoDB、Lambda、ALB と Fargate（Terraform）
 ├── package.json       # Bun workspace（api と web）。zod はここの dependencies。typescript と vitest は devDependencies
 ├── vitest.config.ts   # api と web のユニットテスト
 ├── tsconfig.base.json # api と web で共有する TypeScript 設定
@@ -218,10 +218,12 @@ http://localhost:3001 の既定ページに、`items` の一覧と `name` の投
 
 テーブルだけを AWS に作ります。Lambda の zip は要りません。事前に `aws sso login` などで認証します。
 
+`infra` の `terraform apply` は `allowed_cidr` が必須です。テーブルだけを作るときも渡します。値はこの PC のグローバル IP を `/32` にしたものです。
+
 ```bash
 cd infra
 terraform init
-terraform apply -target=aws_dynamodb_table.items
+terraform apply -target=aws_dynamodb_table.items -var="allowed_cidr=$(curl -4 -s ifconfig.me)/32"
 ```
 
 リージョンは `ap-northeast-1`、テーブル名は `items` です。
@@ -273,7 +275,7 @@ curl http://localhost:3000/items/<id>
 bun run build:lambda
 cd infra
 terraform init
-terraform apply
+terraform apply -var="allowed_cidr=$(curl -4 -s ifconfig.me)/32"
 ```
 
 `apply` は DynamoDB テーブルと Lambda をまとめて作ります。URL は末尾が `/` です。
@@ -306,3 +308,38 @@ curl --aws-sigv4 "aws:amz:${AWS_REGION:-ap-northeast-1}:lambda" \
 ```
 
 署名を付けない `curl` は 403 になります。同じ AWS アカウントの権限がない別の PC からも呼べません。
+
+## Fargate
+
+Next.js と Hono を、1 つの Fargate タスクで動かします。ブラウザの入口は ALB の 80 番で、許可するのは `allowed_cidr` の 1 アドレスだけです。ALB は Next.js の 3000 番へ転送し、Hono は同じタスクの `127.0.0.1:3002` にいます。API の DynamoDB 認証はタスクロールの一時キーです。アクセスキーは渡しません。
+
+イメージが ECR に無いとタスクは起動しないので、先にリポジトリだけを作り、`linux/arm64` で push してから残りを適用します。事前に `aws sso login` などで認証します。
+
+```bash
+cd infra
+terraform init
+terraform apply \
+  -target=aws_ecr_repository.web \
+  -target=aws_ecr_repository.api \
+  -var="allowed_cidr=$(curl -4 -s ifconfig.me)/32"
+
+WEB_REPO=$(terraform output -raw ecr_web_repository_url)
+API_REPO=$(terraform output -raw ecr_api_repository_url)
+aws ecr get-login-password --region "${AWS_REGION:-ap-northeast-1}" \
+  | docker login --username AWS --password-stdin "${WEB_REPO%%/*}"
+
+cd ..
+docker buildx build --platform linux/arm64 -t "$API_REPO:latest" --target api --push .
+docker buildx build --platform linux/arm64 -t "$WEB_REPO:latest" --target web --push .
+
+cd infra
+terraform apply -var="allowed_cidr=$(curl -4 -s ifconfig.me)/32"
+```
+
+画面は `http://<ALBのDNS名>/` です。
+
+```bash
+echo "http://$(terraform output -raw alb_dns_name)/"
+```
+
+回線のグローバル IP が変わったら、`allowed_cidr` を新しい `/32` にして、もう一度 `terraform apply` します。
