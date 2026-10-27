@@ -329,8 +329,8 @@ aws ecr get-login-password --region "${AWS_REGION:-ap-northeast-1}" \
   | docker login --username AWS --password-stdin "${WEB_REPO%%/*}"
 
 cd ..
-docker buildx build --platform linux/arm64 -t "$API_REPO:latest" --target api --push .
-docker buildx build --platform linux/arm64 -t "$WEB_REPO:latest" --target web --push .
+docker buildx build --platform linux/arm64 -t "${API_REPO}:latest" --target api --push .
+docker buildx build --platform linux/arm64 -t "${WEB_REPO}:latest" --target web --push .
 
 cd infra
 terraform apply -var="allowed_cidr=$(curl -4 -s ifconfig.me)/32"
